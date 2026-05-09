@@ -8,404 +8,91 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  :root {
-    --bg: #0f1117;
-    --surface: #1a1d27;
-    --surface2: #22263a;
-    --border: rgba(255,255,255,0.08);
-    --text: #f0f0f0;
-    --muted: #8b8fa8;
-    --accent: #4f8ef7;
-    --accent2: #7c6af7;
-    --danger: #f74f6a;
-    --success: #4fc97a;
-    --radius: 14px;
-    --font: 'Segoe UI', system-ui, sans-serif;
-  }
-
-  body {
-    font-family: var(--font);
-    background: var(--bg);
-    color: var(--text);
-    height: 100dvh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  /* ── TOP BAR ── */
-  #topbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 14px;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-    gap: 8px;
-    z-index: 1000;
-  }
-
-  #topbar h1 {
-    font-size: 16px;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    color: var(--text);
-    white-space: nowrap;
-  }
-
-  .topbar-actions {
-    display: flex;
-    gap: 6px;
-  }
-
-  .icon-btn {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
-    border: 1px solid var(--border);
-    background: var(--surface2);
-    color: var(--text);
-    font-size: 18px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.15s;
-    flex-shrink: 0;
-  }
-  .icon-btn:active { background: var(--accent); }
-
-  /* ── MAP ── */
-  #map {
-    flex: 1;
-    width: 100%;
-    z-index: 1;
-  }
-
-  /* ── BOTTOM PANEL (slide-up overlay) ── */
-  #panel {
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    background: var(--surface);
-    border-top: 1px solid var(--border);
-    border-radius: var(--radius) var(--radius) 0 0;
-    padding: 0 16px 24px;
-    z-index: 2000;
-    transform: translateY(100%);
-    transition: transform 0.3s cubic-bezier(0.32,0.72,0,1);
-    max-height: 70dvh;
-    overflow-y: auto;
-  }
-  #panel.open { transform: translateY(0); }
-
-  .panel-handle {
-    width: 36px; height: 4px;
-    background: var(--border);
-    border-radius: 2px;
-    margin: 10px auto 14px;
-  }
-
-  #panel-color-bar {
-    height: 3px;
-    border-radius: 2px;
-    margin-bottom: 14px;
-  }
-
-  #panel-name {
-    font-size: 20px;
-    font-weight: 700;
-    margin-bottom: 4px;
-  }
-
-  #panel-address {
-    font-size: 13px;
-    color: var(--muted);
-    margin-bottom: 12px;
-  }
-
-  #panel-info {
-    font-size: 14px;
-    line-height: 1.65;
-    color: var(--text);
-    margin-bottom: 14px;
-    white-space: pre-wrap;
-  }
-
-  #panel-links {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 10px;
-  }
-
-  .pin-link {
-    display: block;
-    padding: 11px 14px;
-    border-radius: 10px;
-    border: 1px solid var(--border);
-    background: var(--surface2);
-    color: var(--accent);
-    text-decoration: none;
-    font-size: 14px;
-    font-weight: 500;
-    transition: background 0.15s;
-  }
-  .pin-link:active { background: var(--accent); color: #fff; }
-
-  /* ── DRAWER (manage locations) ── */
-  #drawer {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: var(--bg);
-    z-index: 3000;
-    transform: translateX(100%);
-    transition: transform 0.3s cubic-bezier(0.32,0.72,0,1);
-    display: flex;
-    flex-direction: column;
-  }
-  #drawer.open { transform: translateX(0); }
-
-  #drawer-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 14px;
-    border-bottom: 1px solid var(--border);
-    background: var(--surface);
-    flex-shrink: 0;
-  }
-  #drawer-header h2 { font-size: 16px; font-weight: 600; }
-
-  #drawer-body {
-    flex: 1;
-    overflow-y: auto;
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  /* location card in drawer */
-  .loc-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 12px 14px;
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-  }
-  .loc-dot {
-    width: 12px; height: 12px;
-    border-radius: 50%;
-    margin-top: 4px;
-    flex-shrink: 0;
-  }
-  .loc-card-text { flex: 1; min-width: 0; }
-  .loc-card-name { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
-  .loc-card-addr { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .loc-card-actions { display: flex; gap: 6px; flex-shrink: 0; }
-  .loc-card-actions button {
-    width: 30px; height: 30px;
-    border-radius: 8px;
-    border: 1px solid var(--border);
-    background: var(--surface2);
-    color: var(--muted);
-    font-size: 14px;
-    cursor: pointer;
-  }
-  .loc-card-actions button.del { color: var(--danger); }
-
-  /* ── ADD / EDIT FORM ── */
-  #form-screen {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: var(--bg);
-    z-index: 4000;
-    transform: translateX(100%);
-    transition: transform 0.3s cubic-bezier(0.32,0.72,0,1);
-    display: flex;
-    flex-direction: column;
-  }
-  #form-screen.open { transform: translateX(0); }
-
-  #form-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 14px;
-    border-bottom: 1px solid var(--border);
-    background: var(--surface);
-    flex-shrink: 0;
-  }
-  #form-header h2 { font-size: 16px; font-weight: 600; }
-
-  #form-body {
-    flex: 1;
-    overflow-y: auto;
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-  }
-
-  .field label {
-    display: block;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    margin-bottom: 6px;
-  }
-  .field input, .field textarea {
-    width: 100%;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 11px 13px;
-    color: var(--text);
-    font-size: 15px;
-    font-family: var(--font);
-    outline: none;
-    transition: border-color 0.15s;
-  }
-  .field input:focus, .field textarea:focus { border-color: var(--accent); }
-  .field textarea { resize: vertical; min-height: 80px; }
-
-  .field-row { display: flex; gap: 10px; }
-  .field-row .field { flex: 1; }
-
-  .hint {
-    font-size: 12px;
-    color: var(--muted);
-    margin-top: 4px;
-  }
-
-  .geo-btn {
-    margin-top: 6px;
-    padding: 9px 14px;
-    border-radius: 10px;
-    border: 1px solid var(--accent);
-    background: transparent;
-    color: var(--accent);
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    width: 100%;
-  }
-  .geo-btn:active { background: var(--accent); color: #fff; }
-
-  #form-footer {
-    padding: 12px 16px;
-    border-top: 1px solid var(--border);
-    background: var(--surface);
-    display: flex;
-    gap: 10px;
-    flex-shrink: 0;
-  }
-
-  .btn-save {
-    flex: 1;
-    padding: 13px;
-    border-radius: 11px;
-    border: none;
-    background: var(--accent);
-    color: #fff;
-    font-size: 15px;
-    font-weight: 700;
-    cursor: pointer;
-  }
-  .btn-cancel {
-    padding: 13px 18px;
-    border-radius: 11px;
-    border: 1px solid var(--border);
-    background: var(--surface2);
-    color: var(--muted);
-    font-size: 15px;
-    cursor: pointer;
-  }
-
-  /* ── IMPORT BAR ── */
-  #import-bar {
-    padding: 10px 12px;
-    border-top: 1px solid var(--border);
-    background: var(--surface);
-    flex-shrink: 0;
-    display: flex;
-    gap: 8px;
-    align-items: center;
-  }
-  #import-bar label {
-    flex: 1;
-    padding: 10px;
-    border-radius: 10px;
-    border: 1px dashed var(--border);
-    background: var(--surface2);
-    color: var(--muted);
-    font-size: 13px;
-    cursor: pointer;
-    text-align: center;
-  }
-  #import-bar input { display: none; }
-
-  /* ── TOAST ── */
-  #toast {
-    position: fixed;
-    bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%) translateY(20px);
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-size: 14px;
-    padding: 10px 18px;
-    border-radius: 30px;
-    z-index: 9999;
-    opacity: 0;
-    transition: opacity 0.2s, transform 0.2s;
-    white-space: nowrap;
-    pointer-events: none;
-  }
-  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
-  /* ── LEAFLET OVERRIDES ── */
-  .leaflet-control-attribution { font-size: 9px !important; }
-  .leaflet-control-zoom a {
-    background: var(--surface) !important;
-    color: var(--text) !important;
-    border-color: var(--border) !important;
-  }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0f1117; --surface: #1a1d27; --surface2: #22263a;
+  --border: rgba(255,255,255,0.08); --text: #f0f0f0; --muted: #8b8fa8;
+  --accent: #4f8ef7; --danger: #f74f6a; --radius: 14px;
+  --font: 'Segoe UI', system-ui, sans-serif;
+}
+body { font-family: var(--font); background: var(--bg); color: var(--text); height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+#topbar { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; gap: 8px; z-index: 1000; }
+#topbar h1 { font-size: 16px; font-weight: 600; }
+#pin-count { font-size: 12px; color: var(--muted); background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 2px 10px; }
+.topbar-right { display: flex; gap: 6px; align-items: center; }
+.icon-btn { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.icon-btn:active { background: var(--accent); }
+#map { flex: 1; width: 100%; z-index: 1; }
+#panel { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); border-radius: var(--radius) var(--radius) 0 0; padding: 0 16px 32px; z-index: 2000; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.32,0.72,0,1); max-height: 70dvh; overflow-y: auto; }
+#panel.open { transform: translateY(0); }
+.panel-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 10px auto 14px; }
+#panel-bar { height: 3px; border-radius: 2px; margin-bottom: 14px; }
+#panel-name { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+#panel-address { font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+#panel-info { font-size: 14px; line-height: 1.65; margin-bottom: 14px; white-space: pre-wrap; }
+#panel-links { display: flex; flex-direction: column; gap: 8px; }
+.pin-link { display: block; padding: 11px 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface2); color: var(--accent); text-decoration: none; font-size: 14px; font-weight: 500; }
+.pin-link:active { background: var(--accent); color: #fff; }
+#drawer { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg); z-index: 3000; transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.32,0.72,0,1); display: flex; flex-direction: column; }
+#drawer.open { transform: translateX(0); }
+#drawer-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
+#drawer-header h2 { font-size: 16px; font-weight: 600; }
+#drawer-body { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.loc-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; display: flex; align-items: flex-start; gap: 10px; }
+.loc-dot { width: 12px; height: 12px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+.loc-card-text { flex: 1; min-width: 0; }
+.loc-card-name { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+.loc-card-addr { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.loc-card-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.loc-card-actions button { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); font-size: 14px; cursor: pointer; }
+.loc-card-actions button.del { color: var(--danger); }
+#import-bar { padding: 10px 12px; border-top: 1px solid var(--border); background: var(--surface); flex-shrink: 0; display: flex; gap: 8px; align-items: center; }
+#import-bar label { flex: 1; padding: 10px; border-radius: 10px; border: 1px dashed var(--border); background: var(--surface2); color: var(--muted); font-size: 13px; cursor: pointer; text-align: center; }
+#import-bar input { display: none; }
+#form-screen { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg); z-index: 4000; transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.32,0.72,0,1); display: flex; flex-direction: column; }
+#form-screen.open { transform: translateX(0); }
+#form-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
+#form-header h2 { font-size: 16px; font-weight: 600; }
+#form-body { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.field label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+.field input, .field textarea { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 11px 13px; color: var(--text); font-size: 15px; font-family: var(--font); outline: none; }
+.field input:focus, .field textarea:focus { border-color: var(--accent); }
+.field textarea { resize: vertical; min-height: 80px; }
+.field-row { display: flex; gap: 10px; }
+.field-row .field { flex: 1; }
+.hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.geo-btn { padding: 9px 14px; border-radius: 10px; border: 1px solid var(--accent); background: transparent; color: var(--accent); font-size: 13px; font-weight: 600; cursor: pointer; width: 100%; }
+#form-footer { padding: 12px 16px; border-top: 1px solid var(--border); background: var(--surface); display: flex; gap: 10px; flex-shrink: 0; }
+.btn-save { flex: 1; padding: 13px; border-radius: 11px; border: none; background: var(--accent); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; }
+.btn-cancel { padding: 13px 18px; border-radius: 11px; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); font-size: 15px; cursor: pointer; }
+#toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-size: 14px; padding: 10px 18px; border-radius: 30px; z-index: 9999; opacity: 0; transition: opacity 0.2s, transform 0.2s; white-space: nowrap; pointer-events: none; }
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.leaflet-control-attribution { font-size: 9px !important; }
+.leaflet-control-zoom a { background: var(--surface) !important; color: var(--text) !important; border-color: var(--border) !important; }
 </style>
 </head>
 <body>
 
-<!-- TOP BAR -->
 <div id="topbar">
   <h1>📍 My Map</h1>
-  <div class="topbar-actions">
-    <button class="icon-btn" onclick="openDrawer()" title="Manage locations">☰</button>
+  <div class="topbar-right">
+    <span id="pin-count"></span>
     <button class="icon-btn" onclick="locateMe()" title="My location">◎</button>
+    <button class="icon-btn" onclick="openDrawer()" title="Manage locations">☰</button>
   </div>
 </div>
 
-<!-- MAP -->
 <div id="map"></div>
 
-<!-- BOTTOM PANEL (pin details) -->
 <div id="panel">
   <div class="panel-handle" onclick="closePanel()"></div>
-  <div id="panel-color-bar"></div>
+  <div id="panel-bar"></div>
   <div id="panel-name"></div>
   <div id="panel-address"></div>
   <div id="panel-info"></div>
   <div id="panel-links"></div>
 </div>
 
-<!-- DRAWER (manage locations) -->
 <div id="drawer">
   <div id="drawer-header">
     <h2>Locations</h2>
@@ -413,56 +100,38 @@
   </div>
   <div id="drawer-body"></div>
   <div id="import-bar">
-    <label>
-      📥 Import Excel (.xlsx)
-      <input type="file" id="xlsxInput" accept=".xlsx,.xls" onchange="importExcel(this)">
+    <label>📥 Import Excel (.xlsx)
+      <input type="file" accept=".xlsx,.xls" onchange="importExcel(this)">
     </label>
-    <button class="icon-btn" onclick="openForm(null)" title="Add location" style="background:var(--accent);border-color:var(--accent);">＋</button>
+    <button class="icon-btn" onclick="openForm(null)" style="background:var(--accent);border-color:var(--accent);">＋</button>
   </div>
 </div>
 
-<!-- ADD / EDIT FORM -->
 <div id="form-screen">
   <div id="form-header">
     <h2 id="form-title">Add location</h2>
     <button class="icon-btn" onclick="closeForm()">✕</button>
   </div>
   <div id="form-body">
-    <div class="field">
-      <label>Name *</label>
-      <input id="f-name" type="text" placeholder="e.g. Office, Client site…">
-    </div>
-    <div class="field">
-      <label>Address</label>
-      <input id="f-address" type="text" placeholder="Street, City">
-    </div>
+    <div class="field"><label>Name *</label><input id="f-name" type="text" placeholder="e.g. Office, Client site…"></div>
+    <div class="field"><label>Address</label><input id="f-address" type="text" placeholder="Street, City"></div>
     <div class="field-row">
-      <div class="field">
-        <label>Latitude *</label>
-        <input id="f-lat" type="number" step="any" placeholder="e.g. 59.911">
-      </div>
-      <div class="field">
-        <label>Longitude *</label>
-        <input id="f-lng" type="number" step="any" placeholder="e.g. 10.752">
-      </div>
+      <div class="field"><label>Latitude *</label><input id="f-lat" type="number" step="any" placeholder="59.911"></div>
+      <div class="field"><label>Longitude *</label><input id="f-lng" type="number" step="any" placeholder="10.752"></div>
     </div>
     <button class="geo-btn" onclick="geocodeAddress()">🔍 Look up coordinates from address</button>
-    <p class="hint">Or tap the button to auto-fill coordinates from the address field.</p>
-    <div class="field">
-      <label>Info / Notes</label>
-      <textarea id="f-info" placeholder="Any notes, details, description…"></textarea>
-    </div>
+    <p class="hint">Fill in the address above, then tap to auto-fill coordinates.</p>
+    <div class="field"><label>Info / Notes</label><textarea id="f-info" placeholder="Any notes, details…"></textarea></div>
     <div class="field">
       <label>Link URL</label>
       <input id="f-link" type="url" placeholder="https://…">
-      <p class="hint">Separate multiple links with a pipe: url1|url2</p>
+      <p class="hint">Multiple links: separate with | e.g. https://a.com|https://b.com</p>
     </div>
     <div class="field">
       <label>Link label</label>
-      <input id="f-linklabel" type="text" placeholder="e.g. Open file|Visit website">
-      <p class="hint">One label per link, separated by pipe |</p>
+      <input id="f-linklabel" type="text" placeholder="Open file|Visit website">
+      <p class="hint">One label per link, separated by |</p>
     </div>
-    <input type="hidden" id="f-id">
   </div>
   <div id="form-footer">
     <button class="btn-cancel" onclick="closeForm()">Cancel</button>
@@ -470,297 +139,241 @@
   </div>
 </div>
 
-<!-- TOAST -->
 <div id="toast"></div>
 
 <script>
-// ── DATA ──────────────────────────────────────────────────────────────────────
+// ── STORAGE ───────────────────────────────────────────────────────────────────
+const KEY = 'mymap_v3';
 
-const STORAGE_KEY = 'mymap_locations_v2';
-const COLORS = ['#4f8ef7','#f7714f','#4fc97a','#f7c44f','#c44ff7','#f74f9a','#4ff7e8','#f7f74f'];
-
-let locations = [];
-let editingId = null;
+function storageOK() {
+  try { localStorage.setItem('_t','1'); localStorage.removeItem('_t'); return true; }
+  catch(e) { return false; }
+}
 
 function loadData() {
+  if (!storageOK()) { showToast('⚠️ Storage not available'); return; }
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    locations = raw ? JSON.parse(raw) : [];
-    if (!Array.isArray(locations)) locations = [];
-  } catch(e) {
-    locations = [];
-    console.warn('loadData error:', e);
-  }
+    const raw = localStorage.getItem(KEY);
+    if (!raw) { locations = []; return; }
+    const p = JSON.parse(raw);
+    locations = Array.isArray(p) ? p : [];
+  } catch(e) { locations = []; }
 }
 
 function saveData() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(locations));
-    // verify it was actually saved
-    const check = localStorage.getItem(STORAGE_KEY);
-    if (!check) throw new Error('Save verification failed');
-  } catch(e) {
-    console.error('saveData error:', e);
-    toast('⚠️ Could not save — check browser storage settings');
-  }
+  if (!storageOK()) { showToast('⚠️ Cannot save — storage blocked'); return; }
+  try { localStorage.setItem(KEY, JSON.stringify(locations)); }
+  catch(e) { showToast('⚠️ Save failed'); return; }
+  updateCount();
 }
-function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
-function colorFor(id) {
-  const idx = locations.findIndex(l => l.id === id);
-  return COLORS[idx % COLORS.length];
+
+function updateCount() {
+  const el = document.getElementById('pin-count');
+  if (el) el.textContent = locations.length > 0 ? locations.length + ' pin' + (locations.length !== 1 ? 's' : '') : '';
 }
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+const COLORS = ['#4f8ef7','#f7714f','#4fc97a','#f7c44f','#c44ff7','#f74f9a','#4ff7e8','#f7c4f7'];
+let locations = [];
+let editingId = null;
+
+function colorFor(i) { return COLORS[i % COLORS.length]; }
 
 // ── MAP ───────────────────────────────────────────────────────────────────────
-
-const map = L.map('map', { zoomControl: true }).setView([20, 0], 2);
-
-// Single dark tile layer
+const map = L.map('map').setView([20, 0], 2);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
   attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a> © <a href="https://carto.com">CARTO</a>',
   maxZoom: 19
 }).addTo(map);
-
 map.on('click', closePanel);
-
-let markerLayer = L.layerGroup().addTo(map);
+const markerLayer = L.layerGroup().addTo(map);
 
 function makeIcon(color) {
   return L.divIcon({
     className: '',
-    html: `<svg width="30" height="42" viewBox="0 0 30 42" xmlns="http://www.w3.org/2000/svg">
-      <path d="M15 0C7 0 0 7 0 15c0 11 15 27 15 27S30 26 30 15C30 7 23 0 15 0z"
-        fill="${color}" stroke="rgba(0,0,0,0.3)" stroke-width="1.5"/>
-      <circle cx="15" cy="15" r="6" fill="white" opacity="0.9"/>
-    </svg>`,
-    iconSize: [30, 42],
-    iconAnchor: [15, 42],
-    popupAnchor: [0, -44]
+    html: '<svg width="30" height="42" viewBox="0 0 30 42" xmlns="http://www.w3.org/2000/svg"><path d="M15 0C7 0 0 7 0 15c0 11 15 27 15 27S30 26 30 15C30 7 23 0 15 0z" fill="' + color + '" stroke="rgba(0,0,0,0.35)" stroke-width="1.5"/><circle cx="15" cy="15" r="6" fill="white" opacity="0.9"/></svg>',
+    iconSize: [30,42], iconAnchor: [15,42]
   });
 }
 
 function renderMarkers() {
   markerLayer.clearLayers();
-  locations.forEach((loc, i) => {
+  locations.forEach(function(loc, i) {
     if (!loc.lat || !loc.lng) return;
-    const color = COLORS[i % COLORS.length];
-    const m = L.marker([loc.lat, loc.lng], { icon: makeIcon(color) });
-    m.on('click', e => { e.originalEvent?.stopPropagation(); openPanel(loc.id); });
+    var m = L.marker([loc.lat, loc.lng], { icon: makeIcon(colorFor(i)) });
+    (function(idx){ m.on('click', function(e) { if (e.originalEvent) e.originalEvent.stopPropagation(); openPanel(idx); }); })(i);
     markerLayer.addLayer(m);
   });
+  updateCount();
 }
 
 function fitAll() {
-  const pts = locations.filter(l => l.lat && l.lng).map(l => [l.lat, l.lng]);
-  if (pts.length > 1) map.fitBounds(pts, { padding: [50, 50] });
+  var pts = locations.filter(function(l){ return l.lat && l.lng; }).map(function(l){ return [l.lat, l.lng]; });
+  if (pts.length > 1) map.fitBounds(pts, { padding: [50,50] });
   else if (pts.length === 1) map.setView(pts[0], 14);
 }
 
 function locateMe() {
   navigator.geolocation.getCurrentPosition(
-    pos => map.setView([pos.coords.latitude, pos.coords.longitude], 14),
-    () => toast('Could not get your location')
+    function(p) { map.setView([p.coords.latitude, p.coords.longitude], 14); },
+    function() { showToast('Could not get your location'); }
   );
 }
 
 // ── PANEL ─────────────────────────────────────────────────────────────────────
-
-function openPanel(id) {
-  const loc = locations.find(l => l.id === id);
+function openPanel(idx) {
+  var loc = locations[idx];
   if (!loc) return;
-  const color = colorFor(id);
-
-  document.getElementById('panel-color-bar').style.background = color;
-  document.getElementById('panel-name').textContent = loc.name || 'Unnamed';
+  var color = colorFor(idx);
+  document.getElementById('panel-bar').style.background = color;
   document.getElementById('panel-name').style.color = color;
+  document.getElementById('panel-name').textContent = loc.name || 'Unnamed';
   document.getElementById('panel-address').textContent = loc.address || '';
   document.getElementById('panel-info').textContent = loc.info || '';
-
-  const linksEl = document.getElementById('panel-links');
+  var linksEl = document.getElementById('panel-links');
   linksEl.innerHTML = '';
   if (loc.link) {
-    const urls = loc.link.split('|').map(s => s.trim()).filter(Boolean);
-    const labels = (loc.linklabel || '').split('|').map(s => s.trim());
-    urls.forEach((url, i) => {
-      const a = document.createElement('a');
-      a.href = url;
-      a.target = '_blank';
-      a.className = 'pin-link';
+    var urls = loc.link.split('|').map(function(s){ return s.trim(); }).filter(Boolean);
+    var labels = (loc.linklabel || '').split('|').map(function(s){ return s.trim(); });
+    urls.forEach(function(url, i) {
+      var a = document.createElement('a');
+      a.href = url; a.target = '_blank'; a.className = 'pin-link';
       a.textContent = labels[i] || url;
       linksEl.appendChild(a);
     });
   }
-
   document.getElementById('panel').classList.add('open');
-
-  if (loc.lat && loc.lng) {
-    map.panTo([loc.lat, loc.lng], { animate: true });
-  }
+  if (loc.lat && loc.lng) map.panTo([loc.lat, loc.lng]);
 }
 
-function closePanel() {
-  document.getElementById('panel').classList.remove('open');
-}
+function closePanel() { document.getElementById('panel').classList.remove('open'); }
 
 // ── DRAWER ────────────────────────────────────────────────────────────────────
-
-function openDrawer() {
-  renderDrawer();
-  document.getElementById('drawer').classList.add('open');
-  closePanel();
-}
-
-function closeDrawer() {
-  document.getElementById('drawer').classList.remove('open');
-}
+function openDrawer() { renderDrawer(); document.getElementById('drawer').classList.add('open'); closePanel(); }
+function closeDrawer() { document.getElementById('drawer').classList.remove('open'); }
 
 function renderDrawer() {
-  const body = document.getElementById('drawer-body');
+  var body = document.getElementById('drawer-body');
   if (locations.length === 0) {
-    body.innerHTML = `<p style="color:var(--muted);font-size:14px;text-align:center;padding:30px 0;">No locations yet.<br>Tap ＋ to add one or import an Excel file.</p>`;
+    body.innerHTML = '<p style="color:var(--muted);font-size:14px;text-align:center;padding:30px 0;">No locations yet.<br>Tap + to add one.</p>';
     return;
   }
   body.innerHTML = '';
-  locations.forEach((loc, i) => {
-    const color = COLORS[i % COLORS.length];
-    const card = document.createElement('div');
+  locations.forEach(function(loc, i) {
+    var card = document.createElement('div');
     card.className = 'loc-card';
-    card.innerHTML = `
-      <div class="loc-dot" style="background:${color}"></div>
-      <div class="loc-card-text">
-        <div class="loc-card-name">${esc(loc.name || 'Unnamed')}</div>
-        <div class="loc-card-addr">${esc(loc.address || (loc.lat ? `${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)}` : ''))}</div>
-      </div>
-      <div class="loc-card-actions">
-        <button onclick="zoomTo('${loc.id}')">🗺</button>
-        <button onclick="openForm('${loc.id}')">✏️</button>
-        <button class="del" onclick="deleteLocation('${loc.id}')">🗑</button>
-      </div>
-    `;
+    card.innerHTML =
+      '<div class="loc-dot" style="background:' + colorFor(i) + '"></div>' +
+      '<div class="loc-card-text">' +
+        '<div class="loc-card-name">' + esc(loc.name || 'Unnamed') + '</div>' +
+        '<div class="loc-card-addr">' + esc(loc.address || (loc.lat ? loc.lat.toFixed(4)+', '+loc.lng.toFixed(4) : '')) + '</div>' +
+      '</div>' +
+      '<div class="loc-card-actions">' +
+        '<button onclick="zoomTo(' + i + ')">🗺</button>' +
+        '<button onclick="openForm(' + i + ')">✏️</button>' +
+        '<button class="del" onclick="deleteLoc(' + i + ')">🗑</button>' +
+      '</div>';
     body.appendChild(card);
   });
 }
 
-function zoomTo(id) {
-  const loc = locations.find(l => l.id === id);
+function zoomTo(idx) {
+  var loc = locations[idx];
   if (!loc || !loc.lat) return;
   closeDrawer();
   map.setView([loc.lat, loc.lng], 15, { animate: true });
-  setTimeout(() => openPanel(id), 400);
+  setTimeout(function(){ openPanel(idx); }, 400);
 }
 
-function deleteLocation(id) {
+function deleteLoc(idx) {
   if (!confirm('Delete this location?')) return;
-  locations = locations.filter(l => l.id !== id);
+  locations.splice(idx, 1);
   saveData();
   renderMarkers();
   renderDrawer();
-  toast('Location deleted');
+  showToast('Deleted');
 }
 
 // ── FORM ──────────────────────────────────────────────────────────────────────
-
-function openForm(id) {
-  editingId = id;
-  const isEdit = !!id;
-  document.getElementById('form-title').textContent = isEdit ? 'Edit location' : 'Add location';
-
-  if (isEdit) {
-    const loc = locations.find(l => l.id === id);
-    document.getElementById('f-name').value = loc.name || '';
-    document.getElementById('f-address').value = loc.address || '';
-    document.getElementById('f-lat').value = loc.lat || '';
-    document.getElementById('f-lng').value = loc.lng || '';
-    document.getElementById('f-info').value = loc.info || '';
-    document.getElementById('f-link').value = loc.link || '';
-    document.getElementById('f-linklabel').value = loc.linklabel || '';
+function openForm(idx) {
+  editingId = (idx !== null && idx !== undefined) ? idx : null;
+  document.getElementById('form-title').textContent = editingId !== null ? 'Edit location' : 'Add location';
+  if (editingId !== null) {
+    var loc = locations[editingId];
+    document.getElementById('f-name').value      = loc.name      || '';
+    document.getElementById('f-address').value   = loc.address   || '';
+    document.getElementById('f-lat').value        = loc.lat       || '';
+    document.getElementById('f-lng').value        = loc.lng       || '';
+    document.getElementById('f-info').value       = loc.info      || '';
+    document.getElementById('f-link').value       = loc.link      || '';
+    document.getElementById('f-linklabel').value  = loc.linklabel || '';
   } else {
-    ['f-name','f-address','f-lat','f-lng','f-info','f-link','f-linklabel'].forEach(id => {
-      document.getElementById(id).value = '';
-    });
+    ['f-name','f-address','f-lat','f-lng','f-info','f-link','f-linklabel'].forEach(function(id){ document.getElementById(id).value = ''; });
   }
-
   document.getElementById('form-screen').classList.add('open');
 }
 
-function closeForm() {
-  document.getElementById('form-screen').classList.remove('open');
-}
+function closeForm() { document.getElementById('form-screen').classList.remove('open'); }
 
 function saveLocation() {
-  const name = document.getElementById('f-name').value.trim();
-  const lat = parseFloat(document.getElementById('f-lat').value);
-  const lng = parseFloat(document.getElementById('f-lng').value);
-
-  if (!name) { toast('Please enter a name'); return; }
-  if (isNaN(lat) || isNaN(lng)) { toast('Please enter valid coordinates'); return; }
-
-  const data = {
-    name,
-    address: document.getElementById('f-address').value.trim(),
-    lat, lng,
-    info: document.getElementById('f-info').value.trim(),
-    link: document.getElementById('f-link').value.trim(),
-    linklabel: document.getElementById('f-linklabel').value.trim(),
+  var name = document.getElementById('f-name').value.trim();
+  var lat  = parseFloat(document.getElementById('f-lat').value);
+  var lng  = parseFloat(document.getElementById('f-lng').value);
+  if (!name)           { showToast('Please enter a name'); return; }
+  if (isNaN(lat)||isNaN(lng)) { showToast('Please enter valid coordinates'); return; }
+  var entry = {
+    name: name, lat: lat, lng: lng,
+    address:   document.getElementById('f-address').value.trim(),
+    info:      document.getElementById('f-info').value.trim(),
+    link:      document.getElementById('f-link').value.trim(),
+    linklabel: document.getElementById('f-linklabel').value.trim()
   };
-
-  if (editingId) {
-    const idx = locations.findIndex(l => l.id === editingId);
-    locations[idx] = { ...locations[idx], ...data };
-    toast('Location updated');
-  } else {
-    locations.push({ id: uid(), ...data });
-    toast('Location added');
-  }
-
+  if (editingId !== null) { locations[editingId] = entry; showToast('Updated ✓'); }
+  else                    { locations.push(entry);         showToast('Saved ✓'); }
   saveData();
   renderMarkers();
-  closeForm();
   renderDrawer();
   fitAll();
+  closeForm();
 }
 
-// Auto-geocode address → coordinates using Nominatim (free, no key needed)
-async function geocodeAddress() {
-  const addr = document.getElementById('f-address').value.trim();
-  if (!addr) { toast('Enter an address first'); return; }
-  toast('Looking up coordinates…');
-  try {
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}&limit=1`);
-    const data = await res.json();
-    if (data.length === 0) { toast('Address not found'); return; }
-    document.getElementById('f-lat').value = parseFloat(data[0].lat).toFixed(6);
-    document.getElementById('f-lng').value = parseFloat(data[0].lon).toFixed(6);
-    toast('Coordinates found ✓');
-  } catch(e) {
-    toast('Could not reach geocoding service');
-  }
+// ── GEOCODE ───────────────────────────────────────────────────────────────────
+function geocodeAddress() {
+  var addr = document.getElementById('f-address').value.trim();
+  if (!addr) { showToast('Enter an address first'); return; }
+  showToast('Looking up…');
+  fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(addr) + '&limit=1')
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (!d.length) { showToast('Address not found'); return; }
+      document.getElementById('f-lat').value = parseFloat(d[0].lat).toFixed(6);
+      document.getElementById('f-lng').value = parseFloat(d[0].lon).toFixed(6);
+      showToast('Coordinates found ✓');
+    })
+    .catch(function(){ showToast('Geocoding failed'); });
 }
 
-// ── EXCEL IMPORT ──────────────────────────────────────────────────────────────
-
+// ── EXCEL ─────────────────────────────────────────────────────────────────────
 function importExcel(input) {
-  const file = input.files[0];
+  var file = input.files[0];
   if (!file) return;
-  const reader = new FileReader();
+  var reader = new FileReader();
   reader.onload = function(e) {
     try {
-      const wb = XLSX.read(e.target.result, { type: 'binary' });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws);
-      let added = 0;
-      rows.forEach(row => {
-        const name = row.Name || row.name || row.NAME || '';
-        const lat = parseFloat(row.Lat || row.lat || row.LAT || row.Latitude || row.latitude || '');
-        const lng = parseFloat(row.Lng || row.lng || row.LNG || row.Longitude || row.longitude || row.Long || row.long || '');
+      var wb = XLSX.read(e.target.result, { type: 'binary' });
+      var rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+      var added = 0;
+      rows.forEach(function(row) {
+        var name = row.Name || row.name || '';
+        var lat  = parseFloat(row.Lat || row.lat || row.Latitude || row.latitude || '');
+        var lng  = parseFloat(row.Lng || row.lng || row.Long || row.long || row.Longitude || row.longitude || '');
         if (!name || isNaN(lat) || isNaN(lng)) return;
         locations.push({
-          id: uid(),
-          name,
-          address: row.Address || row.address || '',
-          lat, lng,
-          info: row.Info || row.info || row.Notes || row.notes || '',
-          link: row.Link || row.link || row.URL || row.url || '',
-          linklabel: row.LinkLabel || row.linklabel || row.Label || row.label || '',
+          name: name, lat: lat, lng: lng,
+          address:   row.Address   || row.address   || '',
+          info:      row.Info      || row.info      || row.Notes || row.notes || '',
+          link:      row.Link      || row.link      || row.URL   || row.url   || '',
+          linklabel: row.LinkLabel || row.linklabel || row.Label || row.label || ''
         });
         added++;
       });
@@ -768,37 +381,29 @@ function importExcel(input) {
       renderMarkers();
       renderDrawer();
       fitAll();
-      toast(`Imported ${added} location${added !== 1 ? 's' : ''}`);
-    } catch(err) {
-      toast('Could not read Excel file');
-    }
+      showToast('Imported ' + added + ' location' + (added !== 1 ? 's' : '') + ' ✓');
+    } catch(err) { showToast('Could not read file'); }
   };
   reader.readAsBinaryString(file);
   input.value = '';
 }
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-let toastTimer;
-function toast(msg) {
-  const el = document.getElementById('toast');
+var toastTimer;
+function showToast(msg) {
+  var el = document.getElementById('toast');
   el.textContent = msg;
   el.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+  toastTimer = setTimeout(function(){ el.classList.remove('show'); }, 2800);
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
-
-document.addEventListener('DOMContentLoaded', function() {
-  loadData();
-  renderMarkers();
-  if (locations.length > 0) fitAll();
-});
+loadData();
+renderMarkers();
+if (locations.length > 0) fitAll();
 </script>
 </body>
 </html>
