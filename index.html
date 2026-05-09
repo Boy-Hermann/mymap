@@ -476,18 +476,33 @@
 <script>
 // ── DATA ──────────────────────────────────────────────────────────────────────
 
-const STORAGE_KEY = 'mymap_locations';
+const STORAGE_KEY = 'mymap_locations_v2';
 const COLORS = ['#4f8ef7','#f7714f','#4fc97a','#f7c44f','#c44ff7','#f74f9a','#4ff7e8','#f7f74f'];
 
 let locations = [];
 let editingId = null;
 
 function loadData() {
-  try { locations = JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
-  catch(e) { locations = []; }
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    locations = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(locations)) locations = [];
+  } catch(e) {
+    locations = [];
+    console.warn('loadData error:', e);
+  }
 }
+
 function saveData() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(locations));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(locations));
+    // verify it was actually saved
+    const check = localStorage.getItem(STORAGE_KEY);
+    if (!check) throw new Error('Save verification failed');
+  } catch(e) {
+    console.error('saveData error:', e);
+    toast('⚠️ Could not save — check browser storage settings');
+  }
 }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
 function colorFor(id) {
@@ -499,14 +514,9 @@ function colorFor(id) {
 
 const map = L.map('map', { zoomControl: true }).setView([20, 0], 2);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
-  maxZoom: 19
-}).addTo(map);
-
-// Dark tile option (CartoDB dark)
+// Single dark tile layer
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-  attribution: '© <a href="https://carto.com">CARTO</a>',
+  attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a> © <a href="https://carto.com">CARTO</a>',
   maxZoom: 19
 }).addTo(map);
 
@@ -784,14 +794,11 @@ function toast(msg) {
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 
-loadData();
-renderMarkers();
-if (locations.length > 0) fitAll();
-
-// Sample data hint if empty
-if (locations.length === 0) {
-  // Add a welcome marker at 0,0 area is confusing — skip, just show empty map
-}
+document.addEventListener('DOMContentLoaded', function() {
+  loadData();
+  renderMarkers();
+  if (locations.length > 0) fitAll();
+});
 </script>
 </body>
 </html>
